@@ -1,0 +1,548 @@
+<head>
+	<title>The Time Thief | Presented by Immersion</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<template name="main">
+	{{#if currentUser}}
+		{{>header}}
+		{{>main_body}}
+	{{else}}
+		{{>login}}
+    {{/if}}
+</template>
+
+<template name="scan">
+	<header>
+		<div class="name">Scan a Code</div>
+	</header>
+	<main class="dsc">
+		<video id="preview"></video>
+		<div class="error"></div>
+	</main>
+    <script type="text/javascript">
+      let scanner = new Instascan.Scanner({ video: document.getElementById('preview'), mirror: false, backgroundScan: false });
+      scanner.addListener('scan', function (content) {
+        document.location = "/"+content;
+      });
+      Instascan.Camera.getCameras().then(function (cameras) {
+        if (cameras.length > 0) {
+          scanner.start(cameras[1]);
+        } else {
+          $(".error").text('No cameras found.');
+        }
+      }).catch(function (e) {
+        $(".error").text(e);
+      });
+    </script>
+</template>
+
+<template name="header">
+	<header>
+		<div class="name">{{user.username}}</div>
+		<a href="/scan"><img class="scan" src="img/scan.png"/></a>
+	</header>
+</template>
+
+<template name="main_body">
+	<main>
+		{{>character_sheet}}
+	</main>
+</template>
+
+<template name="login">
+	<header>
+		<div class="name">Sign In</div>
+	</header>
+	<main>
+		<div class="login">	
+			<div>
+				<form class="login">
+					<label>Username</label>
+					<input type="text" name="username" placeholder="Username">
+					<label>Password</label>
+					<input type="password" name="password" placeholder="Password">
+					<input type="submit" value="Sign In">
+				</form>
+				<div class="error"></div>
+			</div>
+		</div>
+		<p>or <a href="/register">Create a character</a></p>
+	</main>
+</template>
+
+<template name="register">
+{{#if currentUser}}
+	{{>main}}
+{{else}}
+	<header>
+		<div class="name">Create a character</div>
+	</header>
+	<main>
+		<div class="register">	
+			<div>
+				<form class="register">
+					<label>Username</label>
+					<input type="text" name="username" placeholder="Username" required>
+					<label>Email</label>
+					<input type="text" name="email" placeholder="Email" required>
+					<label>Password</label>
+					<input type="password" name="password" placeholder="Password" required>
+					<input type="submit" value="Create Character">
+				</form>
+				<div class="error"></div>
+			</div>
+		</div>
+	</main>
+{{/if}}
+</template>
+
+<template name="logout">
+	Signing Out
+</template>
+
+<template name="goBack">
+<div class="goBack"><a href="/">&lt;</a></div>
+</template>
+
+<template name="character_sheet">
+	<div>
+		<div>
+			<p>{{game_info.class}}</p>
+			<div class="experience">
+				<div class="experience-bar" style="width:{{level}}%">{{#if max}}<span class="max">MAX</span>{{/if}}</div>
+			</div>
+			<p>Level {{game_info.level}}/99</p>
+		</div>
+		<h2>RANK</h2>
+		<ul>
+			{{! Show all rank slots, gray out unearned ranks }}
+			{{#each mission}}
+			<li class="rank achievement {{#if achieved _id}}achieved{{/if}}">{{#if achieved _id}}<img src="{{img}}">{{/if}}{{#if not_achieved _id}}<img src="lock.png">{{/if}}<h3>{{name}}</h3></li>
+			{{/each}}
+		</ul>
+		<h2>ACHIEVEMENTS</h2>
+		<ul>
+			{{! Show all achievements, gray out unearned, sort by earned first, display help text for all }}
+			{{#each achievement}}
+			{{#if achieved _id}}
+				<li class="achievement achieved"><img src="{{img}}"><h3>{{name}}</h3><p>{{description}}</p></li>
+			{{/if}}
+			{{/each}}
+			{{#each achievement}}
+			{{#if not_achieved _id}}
+				{{#if not_hidden_ach _id}}
+				<li class="achievement"><img src="lock.png"><h3>{{name}}</h3><p>{{description}}</p></li>
+				{{/if}}
+				{{#if hidden_achievement _id}}
+				<li class="achievement"><img src="lock.png"><h3>???</h3></li>
+				{{/if}}
+			{{/if}}
+			{{/each}}
+		</ul>
+	</div>
+</template>
+
+<template name="discovery">
+	{{#if requirementsMet}}
+		<header>
+			{{>goBack}}
+			<div class="name">{{info.name}}</div>
+		</header>
+		<main class="dsc">
+			<img src="img/{{info.img}}.png"/>
+			<div class="desc">
+				{{info.description}}
+				{{>rewards}}
+			</div>
+		</main>
+	{{else}}
+		<main class="dsc">
+			<div class="name">{{info.notMetDescription}}</div>
+		</main>
+	{{/if}}
+</template>
+
+<template name="time">
+{{#if requirementsMet}}
+	{{#if isActive}}
+		<header>
+			{{>goBack}}
+			<div class="name">{{info.name}}</div>
+		</header>
+		{{#if isAlive}}
+			<main class="evt">
+				<img src="img/{{info.img}}.png"/>
+				<div class="action">
+					<button class="battle">{{info.buttonText}}</button>
+					<div class="experience">
+						<div class="experience-bar" style="width:{{curHP info.hp info.maxHP}}%"></div>
+						{{info.hp}}/{{info.maxHP}} HP
+					</div>
+				</div>
+			</main>
+		{{else}}
+			{{#if participant}}
+				{{>completed}}
+			{{else}}
+			<main class="evt">
+				This Time event has recently been completed. It will reset soon.
+			</main>
+			{{/if}}
+		{{/if}}
+	{{else}}
+		{{>not_active}}
+	{{/if}}
+{{else}}
+	<main class="evt">
+		<div class="name">{{info.notMetDescription}}</div>
+	</main>
+{{/if}}
+</template>
+
+<template name="puzzle">
+{{#if requirementsMet}}
+	<header>
+		{{>goBack}}
+		<div class="name">{{info.name}}</div>
+	</header>
+	{{#if solved}}
+	<main class="puz">
+		<img src="img/{{info.img}}.png"/>
+		<div class="desc">
+			{{info.solvedDesc}}
+			{{>rewards}}
+		</div>
+	</main>
+	{{else}}
+	<main class="puz">
+		<img src="img/{{info.img}}.png"/>
+		{{#if descLength}}
+		<div class="desc">{{info.description}}</div>
+		{{/if}}
+		<div class="error">&nbsp;</div>
+		<form>
+			<input type="text" name="answer" placeholder="What is your answer?"/><input type="submit" value="SUBMIT">
+		</form>
+	</main>
+	{{/if}}
+{{else}}
+	<main class="puz">
+		<div class="name">{{info.notMetDescription}}</div>
+	</main>
+{{/if}}
+</template>
+
+<template name="not_active">
+<main class="evt">
+	<div>This event is not currently active.</div>
+</main>
+</template>
+
+<template name="completed">
+	<main class="evt">
+		<h3>Congratulations!</h3>
+		<div>{{info.description}}</div>
+		{{>rewards}}
+	</main>
+</template>
+
+<template name="rewards">
+	{{#if firstTime}}
+	{{else}}
+		{{#if xpExists info.xp}}
+		<div class="rewards">			
+			<div>Earned {{info.xp}} Experience!</div>
+			{{#if achExists info.ach}}
+			<div class="reward-ach">Achievement "{{achievementName info.ach}}" Earned!</div>
+			{{/if}}
+		</div>
+		{{/if}}
+	{{/if}}
+</template>
+
+<template name="fourohfour">
+	<header>
+		404
+	</header>
+	<main>
+		<div>ID Not recognized!</div>
+		<br/>
+		<div><a href="/">Back to Character Sheet</a></div>
+	</main>
+</template>
+
+<template name="create_achievement">
+{{#if admin}}
+	<div class="admin-form">
+		<form>
+			<label>Name</label>
+			<input type="text" name="achName" placeholder="Name" value="{{selected.name}}" required>
+			<div>
+			<label>Type</label>
+			<select name="achType" required>
+			  <option value="Normal" {{selected_normal}}>Normal</option>
+			  <option value="Hidden" {{selected_hidden}}>Hidden</option>
+			  <option value="Rank" {{selected_rank}}>Rank</option>
+			</select>
+			</div>
+			<label>Description</label>
+			<input type="text" name="achDesc" placeholder="Description" value="{{selected.description}}" required>
+			<label>Image</label>
+			<input type="text" name="achImg" placeholder="Image" value="{{selected.img}}" required>
+			<input type="submit" value="Create Achievement">
+		</form>
+	</div>
+	<div>
+		<h2>List of achievements</h2>
+		<table>
+			<tr>
+				<td>Name</td>
+				<td>Description</td>
+				<td>Image</td>
+				<td>Type</td>
+				<td>_id</td>
+				<td>Remove</td>
+			</tr>
+			{{#each achievement}}
+			<tr class="achievement {{selectedAddClass}}">
+				<td>{{name}}</td>
+				<td>{{description}}</td>
+				<td>{{img}}</td>
+				<td>{{type}}</td>
+				<td>{{_id}}</td>
+				<td class="remove">X</td>
+			</tr>
+			{{/each}}
+		</table>
+	</div>
+{{else}}
+	{{>fourohfour}}
+{{/if}}
+</template>
+
+<template name="create_time">
+{{#if admin}}
+	<div class="admin-form">
+		<form>
+			<label>Name</label>
+			<input type="text" name="timeName" placeholder="Name" value="{{selected.name}}" required>
+			<label>Description</label>
+			<input type="text" name="timeDesc" placeholder="Description" value="{{selected.description}}" required>
+			<label>Requirements not met Description</label>
+			<input type="text" name="notMetDesc" placeholder="Not Met Description" value="{{selected.notMetDescription}}" required>
+			<label>Button Text</label>
+			<input type="text" name="buttonText" placeholder="Button Text" value="{{selected.buttonText}}" required>
+			<label>Current HP</label>
+			<input type="text" name="timeCurHP" placeholder="Current HP" value="{{selected.hp}}" required>
+			<label>Maximum HP</label>
+			<input type="text" name="timeMaxHP" placeholder="Max HP" value="{{selected.maxHP}}" required>
+			<label>XP Value</label>
+			<input type="text" name="timeXP" placeholder="XP Value" value="{{selected.xp}}" required>
+			<label>Image</label>
+			<input type="text" name="timeImg" placeholder="Image" value="{{selected.img}}" required>
+			<label>Level Requirement</label>
+			<input type="text" name="timeLvl" placeholder="Level" value="{{selected.lvlReq}}">
+			<label>Achievement Requirement</label>
+			<input type="text" name="achReq" placeholder="Achievement ID" value="{{selected.achReq}}">
+			<label>Story Progression Requirement</label>
+			<input type="text" name="storyReq" placeholder="Story Scan ID" value="{{selected.storyReq}}">
+			<div>
+			<label>Class Requirement</label>
+			<select name="timeCls">
+				<option value="none" {{selected_class "none"}}>None</option>
+				<option value="Fighter" {{selected_class "Fighter"}}>Fighter</option>
+				<option value="Scholar" {{selected_class "Scholar"}}>Scholar</option>
+				<option value="Rogue" {{selected_class "Rogue"}}>Rogue</option>
+			</select>
+			</div>
+			<div>
+			<label>Type</label>
+			<select name="type">
+				<option value="Multiple" {{selected_type "Multiple"}}>Multiple</option>
+				<option value="Single" {{selected_type "Single"}}>Single</option>
+			</select>
+			</div>
+			<label>Associated Achievement</label>
+			<select name="timeAch" required>
+				<option value="none">None</option>
+				{{#each hiddenAchievement}}
+				<option value="{{_id}}" {{selected_ach}}>{{name}}</option>
+				{{/each}}
+			</select>
+			<label>Is Active?
+				<input type="checkbox" name="timeActive" value="active" {{isActive}}>
+			</label>
+			<input type="submit" value="Create TIME">
+		</form>
+	</div>
+	<div>
+		<h2>List of TIME events</h2>
+		<table>
+			<tr>
+				<td>Name</td>
+				<td>Type</td>
+				<td>_id</td>
+				<td>Remove</td>
+			</tr>
+			{{#each time}}
+			<tr class="time {{selectedAddClass}}">
+				<td>{{name}}</td>
+				<td>{{type}}</td>
+				<td>{{_id}}</td>
+				<td class="remove">X</td>
+			</tr>
+			{{/each}}
+		</table>
+	</div>
+{{else}}
+	{{>fourohfour}}
+{{/if}}	
+</template>
+
+<template name="create_discovery">
+{{#if admin}}
+	<div class="admin-form">
+		<form>
+			<label>Name</label>
+			<input type="text" name="dscName" placeholder="Name" value="{{selected.name}}" required>
+			<div>
+			<label>XP</label>
+			<input type="text" name="dscXP" placeholder="XP Value" value="{{selected.xp}}" required>
+			</div>
+			<label>Description</label>
+			<input type="text" name="dscDesc" placeholder="Description" value="{{selected.description}}" required>
+			<label>Requirements not met Description</label>
+			<input type="text" name="notMetDesc" placeholder="Not Met Description" value="{{selected.notMetDescription}}" required>
+			<label>Image</label>
+			<input type="text" name="dscImg" placeholder="Image" value="{{selected.img}}" required>
+			<label>Level Requirement</label>
+			<input type="text" name="dscLvl" placeholder="Level" value="{{selected.lvlReq}}">
+			<label>Achievement Requirement</label>
+			<input type="text" name="achReq" placeholder="Achievement ID" value="{{selected.achReq}}">
+			<label>Story Progression Requirement</label>
+			<input type="text" name="storyReq" placeholder="Story Scan ID" value="{{selected.storyReq}}">
+			<div>
+			<label>Class Requirement</label>
+			<select name="dscCls">
+				<option value="none" {{selected_class "none"}}>None</option>
+				<option value="Fighter" {{selected_class "Fighter"}}>Fighter</option>
+				<option value="Scholar" {{selected_class "Scholar"}}>Scholar</option>
+				<option value="Rogue" {{selected_class "Rogue"}}>Rogue</option>
+			</select>
+			</div>
+			<label>Type</label>
+			<select name="dscType" required>
+				<option value="discovery" {{selected_type "discovery"}}>discovery</option>
+				<option value="informational" {{selected_type "informational"}}>informational</option>
+				<option value="sand" {{selected_type "sand"}}>sand</option>
+				<option value="delivery" {{selected_type "delivery"}}>delivery</option>
+			</select>
+			<label>Associated Achievement</label>
+			<select name="dscAch">
+				<option value="none">None</option>
+				{{#each achievements}}
+					<option value="{{_id}}" {{selected_ach}}>{{name}}</option>
+				{{/each}}
+			</select>
+			<input type="submit" value="Create Discovery">
+		</form>
+	</div>
+	<div>
+		<h2>List of discoveries</h2>
+		<table>
+			<tr>
+				<td>Name</td>
+				<td>Type</td>
+				<td>_id</td>
+				<td>Remove</td>
+			</tr>
+			{{#each discovery}}
+			<tr class="discovery {{selectedAddClass}}">
+				<td>{{name}}</td>
+				<td>{{type}}</td>
+				<td>{{_id}}</td>
+				<td class="remove">X</td>
+			</tr>
+			{{/each}}
+		</table>
+	</div>
+{{else}}
+	{{>fourohfour}}
+{{/if}}	
+</template>
+
+<template name="create_puzzle">
+{{#if admin}}
+	<div class="admin-form">
+		<form>
+			<label>Name</label>
+			<input type="text" name="puzName" placeholder="Name" value="{{selected.name}}" required>
+			<label>Description</label>
+			<input type="text" name="puzDesc" placeholder="Description" value="{{selected.description}}">
+			<label>Requirements Not Met Text</label>
+			<input type="text" name="puzNotMetDesc" placeholder="Not Met" value="{{selected.notMetDescription}}">
+			<label>XP Value</label>
+			<input type="text" name="puzXP" placeholder="XP Value" value="{{selected.xp}}" required>
+			<label>Image</label>
+			<input type="text" name="puzImg" placeholder="Image" value="{{selected.img}}" required>
+			<label>Answer</label>
+			<input type="text" name="puzAns" placeholder="Answer" value="{{selected.answer}}" required>
+			<label>Solved Text</label>
+			<input type="text" name="puzSolvedDesc" placeholder="Solved" value="{{selected.solvedDesc}}" required>
+			<label>Level Requirement</label>
+			<input type="text" name="puzLvlReq" placeholder="Level" value="{{selected.lvlReq}}">
+			<label>Achievement Requirement</label>
+			<input type="text" name="puzAchReq" placeholder="Achievement ID" value="{{selected.achReq}}">
+			<label>Story Progression Requirement</label>
+			<input type="text" name="puzStoryReq" placeholder="Story Scan ID" value="{{selected.storyReq}}">
+			<div>
+			<label>Type</label>
+			<select name="puzType" required>
+				<option value="none" {{selected_type "none"}}>None</option>
+				<option value="code" {{selected_type "code"}}>Code</option>
+				<option value="choice" {{selected_type "choice"}}>Choice</option>
+			</select>
+			</div>
+			<div>
+			<label>Class Requirement</label>
+			<select name="puzClsReq">
+				<option value="none" {{selected_class "none"}}>None</option>
+				<option value="Fighter" {{selected_class "Fighter"}}>Fighter</option>
+				<option value="Scholar" {{selected_class "Scholar"}}>Scholar</option>
+				<option value="Rogue" {{selected_class "Rogue"}}>Rogue</option>
+			</select>
+			</div>
+			<div>
+			<label>Associated Achievement</label>
+			<select name="puzAch" required>
+				<option value="none">None</option>
+				{{#each achievement}}
+					<option value="{{_id}}" {{selected_ach}}>{{name}}</option>
+				{{/each}}
+			</select>
+			</div>
+			<input type="submit" value="Create puzzle">
+		</form>
+	</div>
+	<div>
+		<h2>List of Events</h2>
+		<table>
+			<tr>
+				<td>Name</td>
+				<td>_id</td>
+				<td>Remove</td>
+			</tr>
+			{{#each puzzle}}
+			<tr class="puzzle {{selectedAddClass}}">
+				<td>{{name}}</td>
+				<td>{{_id}}</td>
+				<td class="remove">X</td>
+			</tr>
+			{{/each}}
+		</table>
+	</div>
+{{else}}
+	{{>fourohfour}}
+{{/if}}	
+</template>
